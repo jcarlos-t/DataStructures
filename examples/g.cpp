@@ -1,0 +1,127 @@
+#include <algorithm>
+#include <iostream>
+#include <vector>
+
+using namespace::std;
+
+template<typename T>
+struct PersistentSegmentTree {
+  struct Node {
+    T data;
+    int left = 0;
+    int right = 0;
+  };
+
+  int n;
+  vector<Node> tree;
+  vector<int> version_roots;
+  
+  PersistentSegmentTree(int n): n(n) {
+    tree.push_back({T(), 0, 0});
+    if (n <= 0) return;
+    int root = build(0, n-1);
+    version_roots.emplace_back(root);
+  }
+
+  PersistentSegmentTree(const vector<T>& a) : n((int)a.size()){
+    tree.push_back({T(), 0, 0});
+    if (n <= 0) return;
+    int root = build(0, n-1, a);
+    version_roots.emplace_back(root);
+  }
+
+  int new_node(T data = T(), int l=0, int r=0){
+    tree.push_back({data, l, r});
+    return (int)tree.size()-1;
+  }
+
+  int build(int l, int r, const vector<T>& a){
+    int u = new_node();
+    if (l == r) {
+      tree[u].data = a[l];
+      return u;
+    }
+    int mid = l + (r - l)/2;
+    tree[u].left = build(l, mid, a);
+    tree[u].right = build(mid+1, r, a);
+    tree[u].data = tree[tree[u].left].data + tree[tree[u].right].data;
+    return u;
+  }
+
+  int build(int l, int r){
+    int u = new_node();
+    if (l == r) {
+      tree[u].data = T();
+      return u;
+    }
+    int mid = l + (r-l)/2;
+    tree[u].left = build(l, mid);
+    tree[u].right = build(mid+1, r);
+    tree[u].data = tree[tree[u].left].data + tree[tree[u].right].data;
+    return u;
+  }
+
+  int update(int prev_u, int l, int r, int pos, T val){
+    int u = new_node(tree[prev_u].data, tree[prev_u].left, tree[prev_u].right);
+    if (l == r) {
+      tree[u].data += val;
+      return u;
+    }
+    int mid = l + (r-l)/2;
+    if (pos <= mid) {
+      tree[u].left = update(tree[prev_u].left, l, mid, pos, val);
+    } else {
+      tree[u].right = update(tree[prev_u].right, mid+1, r, pos, val);
+    }
+
+    tree[u].data = tree[tree[u].left].data + tree[tree[u].right].data;
+    return u;
+  }
+
+  int update(int version, int pos, T val){
+    int new_root = update(version_roots[version], 0, n-1, pos, val);
+    version_roots.emplace_back(new_root);
+    return (int)version_roots.size()-1;
+  }
+
+  T query(int u, int l, int r, int ql, int qr){
+    if (!u || ql > r || qr < l) return T();
+    if (ql <= l && r <= qr) return tree[u].data;
+    int mid = l + (r-l)/2;
+    return query(tree[u].left, l, mid, ql, qr) + query(tree[u].right, mid+1, r, ql, qr);
+  }
+
+  T query(int version, int ql, int qr){
+    return query(version_roots[version], 0, n-1, ql, qr);
+  }
+
+  int get_current_version(){
+    return (int)version_roots.size()-1;
+  }
+
+};
+
+
+int main(){
+  cin.tie(0)->sync_with_stdio(false);
+  int n;
+  cin>>n;
+  vector<int> a(n);
+  for (int i=0; i<n; i++) cin>>a[i];
+  vector<int> values(a.begin(), a.end());
+  sort(values.begin(), values.end());
+  values.erase(unique(values.begin(), values.end()), values.end());
+  int m = values.size();
+  for (int i=0; i < n; i++) a[i] = lower_bound(values.begin(), values.end(), a[i]) - values.begin();
+  PersistentSegmentTree<int> S(m);
+  for (int i=0; i < n; i++) S.update(i, a[i], 1);
+  int q;
+  cin>>q;
+  while (q--) {
+    int i, j, k;
+    cin>>i>>j>>k;
+    int r = upper_bound(values.begin(), values.end(), k) - values.begin();
+    cout<<S.query(j, r, m-1) - S.query(i-1, r, m-1)<<"\n";
+  }
+}
+

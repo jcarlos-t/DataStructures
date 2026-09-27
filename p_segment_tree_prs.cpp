@@ -13,9 +13,27 @@ struct PersistentSegmentTree {
 
     vector<SegmentTreeNode*> version_roots;
 
+    PersistentSegmentTree(int n) {
+        version_roots.emplace_back(new SegmentTreeNode(data_type(), 0, n - 1, nullptr, nullptr));
+        build(version_roots[0]);
+    }
+
     PersistentSegmentTree(int l, int r, vector<data_type> &a) {
         version_roots.emplace_back(new SegmentTreeNode(data_type(), l, r, nullptr, nullptr));
         build(version_roots[0], a);
+    }
+
+    void build(SegmentTreeNode *root) {
+        if (root -> l == root -> r) {
+            // -1 porque indexamos en 1
+            root -> data = data_type();
+            return;
+        }
+        int mi = (root -> l + root -> r) / 2;
+        root -> left = new SegmentTreeNode(data_type(), root -> l, mi, nullptr, nullptr);
+        root -> right = new SegmentTreeNode(data_type(), mi + 1, root -> r, nullptr, nullptr);
+        build(root -> left);
+        build(root -> right);
     }
 
     void build(SegmentTreeNode *root, vector<data_type> &a) {
@@ -65,6 +83,10 @@ struct PersistentSegmentTree {
 
     data_type query(int version, int x, int y) {
         return query(x, y, version_roots[version]);
+    }
+
+    int get_current_version() {
+        return (int)version_roots.size() - 1;
     }
 };
 
